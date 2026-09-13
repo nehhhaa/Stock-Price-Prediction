@@ -1,4 +1,7 @@
 # 📈 Stock Price Prediction Using Machine Learning
+## 🚀 Live Demo
+
+🔗 [Try StockAI Predictor](https://stock-price-prediction-73j2v6tquwdzrgn5uxtxdq.streamlit.app/)
 
 A machine learning project that predicts the next-day closing price of a stock using historical stock market data.
 
