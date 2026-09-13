@@ -5,25 +5,18 @@ import yfinance as yf
 import joblib
 import matplotlib.pyplot as plt
 
-
-# ==========================================
-# PAGE CONFIGURATION
-# ==========================================
-
 st.set_page_config(
     page_title="StockAI Predictor",
     page_icon="📈",
     layout="wide"
 )
 
-
-# ==========================================
-# CUSTOM CSS
-# ==========================================
+# ==============================
+# PAGE STYLING
+# ==============================
 
 st.markdown("""
 <style>
-
 .main {
     background-color: #f7f9fc;
 }
@@ -45,14 +38,13 @@ st.markdown("""
     box-shadow: 0px 4px 15px rgba(0,0,0,0.08);
     text-align: center;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
 
-# ==========================================
+# ==============================
 # TITLE
-# ==========================================
+# ==============================
 
 st.markdown(
     '<div class="title">📈 StockAI Predictor</div>',
@@ -67,9 +59,9 @@ st.markdown(
 st.write("")
 
 
-# ==========================================
+# ==============================
 # SIDEBAR
-# ==========================================
+# ==============================
 
 st.sidebar.header("⚙️ Stock Settings")
 
@@ -88,14 +80,12 @@ end_date = st.sidebar.date_input(
     pd.Timestamp.today()
 )
 
-analyze = st.sidebar.button(
-    "🚀 Analyze Stock"
-)
+analyze = st.sidebar.button("🚀 Analyze Stock")
 
 
-# ==========================================
+# ==============================
 # LOAD SAVED MODEL
-# ==========================================
+# ==============================
 
 try:
 
@@ -116,9 +106,9 @@ except FileNotFoundError:
     st.stop()
 
 
-# ==========================================
-# MAIN ANALYSIS
-# ==========================================
+# ==============================
+# ANALYZE STOCK
+# ==============================
 
 if analyze:
 
@@ -131,12 +121,17 @@ if analyze:
         auto_adjust=False
     )
 
-    # Fix MultiIndex columns
+    # Fix Yahoo Finance MultiIndex
     if isinstance(data.columns, pd.MultiIndex):
 
         data.columns = data.columns.get_level_values(0)
 
     data = data.reset_index()
+
+
+    # ==============================
+    # CHECK DATA
+    # ==============================
 
     if data.empty:
 
@@ -147,13 +142,15 @@ if analyze:
         st.stop()
 
 
-    # ==========================================
-    # HISTORICAL PRICE
-    # ==========================================
+    # ==============================
+    # HISTORICAL PRICE GRAPH
+    # ==============================
 
     st.subheader("📊 Historical Closing Price")
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(
+        figsize=(12, 5)
+    )
 
     ax.plot(
         data["Date"],
@@ -162,13 +159,18 @@ if analyze:
 
     ax.set_xlabel("Date")
     ax.set_ylabel("Closing Price")
+    ax.set_title("TCS Historical Closing Price")
+
+    fig.autofmt_xdate()
+
+    fig.tight_layout()
 
     st.pyplot(fig)
 
 
-    # ==========================================
+    # ==============================
     # FEATURE ENGINEERING
-    # ==========================================
+    # ==============================
 
     data["Previous_Close"] = (
         data["Close"].shift(1)
@@ -184,13 +186,12 @@ if analyze:
 
 
     # Remove missing values
-
     clean_data = data.dropna().copy()
 
 
-    # ==========================================
-    # PREPARE FEATURES
-    # ==========================================
+    # ==============================
+    # FEATURES
+    # ==============================
 
     features = [
         "Previous_Close",
@@ -198,6 +199,11 @@ if analyze:
         "MA21",
         "Volume"
     ]
+
+
+    # ==============================
+    # NEXT DAY PREDICTION
+    # ==============================
 
     latest_data = clean_data.iloc[-1]
 
@@ -212,14 +218,14 @@ if analyze:
     )
 
 
-    # ==========================================
-    # PREDICT NEXT DAY
-    # ==========================================
-
     prediction = model.predict(
         X_latest
     )[0]
 
+
+    # ==============================
+    # PRICE CALCULATIONS
+    # ==============================
 
     current_price = float(
         clean_data["Close"].iloc[-1]
@@ -234,12 +240,11 @@ if analyze:
     ) * 100
 
 
-    # ==========================================
-    # DISPLAY RESULTS
-    # ==========================================
+    # ==============================
+    # PREDICTION DISPLAY
+    # ==============================
 
     st.subheader("🔮 Prediction")
-
 
     col1, col2, col3 = st.columns(3)
 
@@ -269,33 +274,43 @@ if analyze:
         )
 
 
-    # ==========================================
+    # ==============================
     # ACTUAL VS PREDICTED
-    # ==========================================
+    # ==============================
 
-    st.subheader(
-        "📈 Actual vs Predicted Prices"
-    )
+    st.subheader("📈 Actual vs Predicted Prices")
 
-
-    # Create predictions for test data
 
     split = int(
         len(clean_data) * 0.8
     )
 
-    test_data = clean_data.iloc[split:].copy()
 
-    X_test = test_data[features]
+    test_data = clean_data.iloc[
+        split:
+    ].copy()
 
-    y_actual = test_data["Close"]
+
+    X_test = test_data[
+        features
+    ]
+
+
+    y_actual = test_data[
+        "Close"
+    ]
+
 
     y_pred = model.predict(
         X_test
     )
 
 
-    fig2, ax2 = plt.subplots()
+    # Create graph
+    fig2, ax2 = plt.subplots(
+        figsize=(12, 5)
+    )
+
 
     ax2.plot(
         test_data["Date"],
@@ -303,28 +318,55 @@ if analyze:
         label="Actual Price"
     )
 
+
     ax2.plot(
         test_data["Date"],
         y_pred,
         label="Predicted Price"
     )
 
+
     ax2.set_xlabel("Date")
     ax2.set_ylabel("Price")
 
+    ax2.set_title(
+        "Actual vs Predicted Prices"
+    )
+
+
+    # ==============================
+    # FIX X-AXIS CONGESTION
+    # ==============================
+
+    ax2.xaxis.set_major_locator(
+        plt.MaxNLocator(10)
+    )
+
+    ax2.tick_params(
+        axis="x",
+        rotation=45
+    )
+
+
     ax2.legend()
+
+    ax2.grid(
+        True,
+        alpha=0.3
+    )
+
+
+    fig2.tight_layout()
+
 
     st.pyplot(fig2)
 
 
-    # ==========================================
+    # ==============================
     # MODEL PERFORMANCE
-    # ==========================================
+    # ==============================
 
-    st.subheader(
-        "🤖 Model Performance"
-    )
-
+    st.subheader("🤖 Model Performance")
 
     col1, col2, col3 = st.columns(3)
 
@@ -353,21 +395,18 @@ if analyze:
         )
 
 
-    # ==========================================
-    # MODEL INFORMATION
-    # ==========================================
+    # ==============================
+    # MODEL DETAILS
+    # ==============================
 
-    st.subheader(
-        "🧠 Model Details"
-    )
+    st.subheader("🧠 Model Details")
 
     st.write(
         "**Algorithm:** Linear Regression"
     )
 
     st.write(
-        "**Features used:** "
-        "Previous Close, MA7, MA21, Volume"
+        "**Features used:** Previous Close, MA7, MA21, Volume"
     )
 
     st.write(
@@ -375,19 +414,21 @@ if analyze:
     )
 
 
-    # ==========================================
+    # ==============================
     # DISCLAIMER
-    # ==========================================
+    # ==============================
 
     st.warning(
-        "⚠️ This project is for educational purposes "
-        "only and is not financial advice."
+        "⚠️ This project is for educational purposes only and is not financial advice."
     )
 
+
+# ==============================
+# INITIAL MESSAGE
+# ==============================
 
 else:
 
     st.info(
-        "👈 Enter a stock symbol and click "
-        "**Analyze Stock** to begin."
+        "👈 Enter a stock symbol and click **Analyze Stock** to begin."
     )
